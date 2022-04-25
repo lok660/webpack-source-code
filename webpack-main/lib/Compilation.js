@@ -1434,7 +1434,7 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
         for (const b of block.blocks) processDependenciesBlock(b);
       }
     };
-
+    //  收集依赖
     processDependenciesBlock(module);
   }
 
@@ -4576,6 +4576,7 @@ This prevents using hashes of each other and should be avoided.`);
           this.errors.push(new ChunkRenderError(chunk, "", err));
           return callback();
         }
+        //  循环执行 compilation.handleModuleCreation 再进行模块转换、依赖收集
         asyncLib.forEach(
           manifest,
           (fileManifest, callback) => {
