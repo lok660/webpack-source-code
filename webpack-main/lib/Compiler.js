@@ -465,6 +465,7 @@ class Compiler {
       process.nextTick(() => {
         logger = compilation.getLogger("webpack.Compiler");
         logger.time("emitAssets");
+        //  对于每个compilation,都会调用emitAssets方法,并且会调用emitAssets方法的回调函数
         this.emitAssets(compilation, err => {
           logger.timeEnd("emitAssets");
           if (err) return finalCallback(err);
