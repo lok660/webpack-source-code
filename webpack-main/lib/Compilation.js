@@ -1333,6 +1333,7 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
    * @returns {void}
    */
   buildModule (module, callback) {
+    //  将 module 添加到 buildQueue
     this.buildQueue.add(module, callback);
   }
 
