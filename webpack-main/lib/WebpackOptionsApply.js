@@ -1,6 +1,6 @@
 /*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
+  MIT License http://www.opensource.org/licenses/mit-license.php
+  Author Tobias Koppers @sokra
 */
 
 "use strict";
@@ -59,642 +59,648 @@ const { cleverMerge } = require("./util/cleverMerge");
 /** @typedef {import("./Compiler")} Compiler */
 
 class WebpackOptionsApply extends OptionsApply {
-	constructor() {
-		super();
-	}
+  constructor() {
+    super();
+  }
 
-	/**
-	 * @param {WebpackOptions} options options object
-	 * @param {Compiler} compiler compiler object
-	 * @returns {WebpackOptions} options object
-	 */
-	process(options, compiler) {
-		compiler.outputPath = options.output.path;
-		compiler.recordsInputPath = options.recordsInputPath || null;
-		compiler.recordsOutputPath = options.recordsOutputPath || null;
-		compiler.name = options.name;
+  /**
+   * @param {WebpackOptions} options options object
+   * @param {Compiler} compiler compiler object
+   * @returns {WebpackOptions} options object
+   */
+  // ⭕作用:将传入的 webpack.config.js 属性(如 mode,devtool) 转换成 webpack plugin并注入到 webpack生命周期中
+  //  导入后就会进行 new ChunkPrefetchPreloadPlugin().apply(compiler)的过程
+  //  这些 plugin 后续将通过 tabable 实现勾子的监听,并进行自身逻辑的处理
+  //  所以在webpack中,插件就是灵魂,贯穿了整个 webapck 生命周期  
+  process (options, compiler) {
 
-		if (options.externals) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ExternalsPlugin = require("./ExternalsPlugin");
-			new ExternalsPlugin(options.externalsType, options.externals).apply(
-				compiler
-			);
-		}
+    compiler.outputPath = options.output.path;
+    compiler.recordsInputPath = options.recordsInputPath || null;
+    compiler.recordsOutputPath = options.recordsOutputPath || null;
+    compiler.name = options.name;
 
-		if (options.externalsPresets.node) {
-			const NodeTargetPlugin = require("./node/NodeTargetPlugin");
-			new NodeTargetPlugin().apply(compiler);
-		}
-		if (options.externalsPresets.electronMain) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
-			new ElectronTargetPlugin("main").apply(compiler);
-		}
-		if (options.externalsPresets.electronPreload) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
-			new ElectronTargetPlugin("preload").apply(compiler);
-		}
-		if (options.externalsPresets.electronRenderer) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
-			new ElectronTargetPlugin("renderer").apply(compiler);
-		}
-		if (
-			options.externalsPresets.electron &&
-			!options.externalsPresets.electronMain &&
-			!options.externalsPresets.electronPreload &&
-			!options.externalsPresets.electronRenderer
-		) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
-			new ElectronTargetPlugin().apply(compiler);
-		}
-		if (options.externalsPresets.nwjs) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ExternalsPlugin = require("./ExternalsPlugin");
-			new ExternalsPlugin("node-commonjs", "nw.gui").apply(compiler);
-		}
-		if (options.externalsPresets.webAsync) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ExternalsPlugin = require("./ExternalsPlugin");
-			new ExternalsPlugin(
-				"import",
-				options.experiments.css
-					? ({ request, dependencyType }, callback) => {
-							if (dependencyType === "url") {
-								if (/^(\/\/|https?:\/\/)/.test(request))
-									return callback(null, `asset ${request}`);
-							} else if (dependencyType === "css-import") {
-								if (/^(\/\/|https?:\/\/)/.test(request))
-									return callback(null, `css-import ${request}`);
-							} else if (/^(\/\/|https?:\/\/|std:)/.test(request)) {
-								if (/^\.css(\?|$)/.test(request))
-									return callback(null, `css-import ${request}`);
-								return callback(null, `import ${request}`);
-							}
-							callback();
-					  }
-					: /^(\/\/|https?:\/\/|std:)/
-			).apply(compiler);
-		} else if (options.externalsPresets.web) {
-			//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-			const ExternalsPlugin = require("./ExternalsPlugin");
-			new ExternalsPlugin(
-				"module",
-				options.experiments.css
-					? ({ request, dependencyType }, callback) => {
-							if (dependencyType === "url") {
-								if (/^(\/\/|https?:\/\/)/.test(request))
-									return callback(null, `asset ${request}`);
-							} else if (dependencyType === "css-import") {
-								if (/^(\/\/|https?:\/\/)/.test(request))
-									return callback(null, `css-import ${request}`);
-							} else if (/^(\/\/|https?:\/\/|std:)/.test(request)) {
-								if (/^\.css(\?|$)/.test(request))
-									return callback(null, `css-import ${request}`);
-								return callback(null, `module ${request}`);
-							}
-							callback();
-					  }
-					: /^(\/\/|https?:\/\/|std:)/
-			).apply(compiler);
-		}
+    //  根据配置情况, 决定是否使用一些plugin辅助
+    if (options.externals) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ExternalsPlugin = require("./ExternalsPlugin");
+      new ExternalsPlugin(options.externalsType, options.externals).apply(
+        compiler
+      );
+    }
 
-		new ChunkPrefetchPreloadPlugin().apply(compiler);
+    if (options.externalsPresets.node) {
+      const NodeTargetPlugin = require("./node/NodeTargetPlugin");
+      new NodeTargetPlugin().apply(compiler);
+    }
+    if (options.externalsPresets.electronMain) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
+      new ElectronTargetPlugin("main").apply(compiler);
+    }
+    if (options.externalsPresets.electronPreload) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
+      new ElectronTargetPlugin("preload").apply(compiler);
+    }
+    if (options.externalsPresets.electronRenderer) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
+      new ElectronTargetPlugin("renderer").apply(compiler);
+    }
+    if (
+      options.externalsPresets.electron &&
+      !options.externalsPresets.electronMain &&
+      !options.externalsPresets.electronPreload &&
+      !options.externalsPresets.electronRenderer
+    ) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ElectronTargetPlugin = require("./electron/ElectronTargetPlugin");
+      new ElectronTargetPlugin().apply(compiler);
+    }
+    if (options.externalsPresets.nwjs) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ExternalsPlugin = require("./ExternalsPlugin");
+      new ExternalsPlugin("node-commonjs", "nw.gui").apply(compiler);
+    }
+    if (options.externalsPresets.webAsync) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ExternalsPlugin = require("./ExternalsPlugin");
+      new ExternalsPlugin(
+        "import",
+        options.experiments.css
+          ? ({ request, dependencyType }, callback) => {
+            if (dependencyType === "url") {
+              if (/^(\/\/|https?:\/\/)/.test(request))
+                return callback(null, `asset ${request}`);
+            } else if (dependencyType === "css-import") {
+              if (/^(\/\/|https?:\/\/)/.test(request))
+                return callback(null, `css-import ${request}`);
+            } else if (/^(\/\/|https?:\/\/|std:)/.test(request)) {
+              if (/^\.css(\?|$)/.test(request))
+                return callback(null, `css-import ${request}`);
+              return callback(null, `import ${request}`);
+            }
+            callback();
+          }
+          : /^(\/\/|https?:\/\/|std:)/
+      ).apply(compiler);
+    } else if (options.externalsPresets.web) {
+      //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+      const ExternalsPlugin = require("./ExternalsPlugin");
+      new ExternalsPlugin(
+        "module",
+        options.experiments.css
+          ? ({ request, dependencyType }, callback) => {
+            if (dependencyType === "url") {
+              if (/^(\/\/|https?:\/\/)/.test(request))
+                return callback(null, `asset ${request}`);
+            } else if (dependencyType === "css-import") {
+              if (/^(\/\/|https?:\/\/)/.test(request))
+                return callback(null, `css-import ${request}`);
+            } else if (/^(\/\/|https?:\/\/|std:)/.test(request)) {
+              if (/^\.css(\?|$)/.test(request))
+                return callback(null, `css-import ${request}`);
+              return callback(null, `module ${request}`);
+            }
+            callback();
+          }
+          : /^(\/\/|https?:\/\/|std:)/
+      ).apply(compiler);
+    }
 
-		if (typeof options.output.chunkFormat === "string") {
-			switch (options.output.chunkFormat) {
-				case "array-push": {
-					const ArrayPushCallbackChunkFormatPlugin = require("./javascript/ArrayPushCallbackChunkFormatPlugin");
-					new ArrayPushCallbackChunkFormatPlugin().apply(compiler);
-					break;
-				}
-				case "commonjs": {
-					const CommonJsChunkFormatPlugin = require("./javascript/CommonJsChunkFormatPlugin");
-					new CommonJsChunkFormatPlugin().apply(compiler);
-					break;
-				}
-				case "module": {
-					const ModuleChunkFormatPlugin = require("./esm/ModuleChunkFormatPlugin");
-					new ModuleChunkFormatPlugin().apply(compiler);
-					break;
-				}
-				default:
-					throw new Error(
-						"Unsupported chunk format '" + options.output.chunkFormat + "'."
-					);
-			}
-		}
+    new ChunkPrefetchPreloadPlugin().apply(compiler);
 
-		if (options.output.enabledChunkLoadingTypes.length > 0) {
-			for (const type of options.output.enabledChunkLoadingTypes) {
-				const EnableChunkLoadingPlugin = require("./javascript/EnableChunkLoadingPlugin");
-				new EnableChunkLoadingPlugin(type).apply(compiler);
-			}
-		}
+    if (typeof options.output.chunkFormat === "string") {
+      switch (options.output.chunkFormat) {
+        case "array-push": {
+          const ArrayPushCallbackChunkFormatPlugin = require("./javascript/ArrayPushCallbackChunkFormatPlugin");
+          new ArrayPushCallbackChunkFormatPlugin().apply(compiler);
+          break;
+        }
+        case "commonjs": {
+          const CommonJsChunkFormatPlugin = require("./javascript/CommonJsChunkFormatPlugin");
+          new CommonJsChunkFormatPlugin().apply(compiler);
+          break;
+        }
+        case "module": {
+          const ModuleChunkFormatPlugin = require("./esm/ModuleChunkFormatPlugin");
+          new ModuleChunkFormatPlugin().apply(compiler);
+          break;
+        }
+        default:
+          throw new Error(
+            "Unsupported chunk format '" + options.output.chunkFormat + "'."
+          );
+      }
+    }
 
-		if (options.output.enabledWasmLoadingTypes.length > 0) {
-			for (const type of options.output.enabledWasmLoadingTypes) {
-				const EnableWasmLoadingPlugin = require("./wasm/EnableWasmLoadingPlugin");
-				new EnableWasmLoadingPlugin(type).apply(compiler);
-			}
-		}
+    if (options.output.enabledChunkLoadingTypes.length > 0) {
+      for (const type of options.output.enabledChunkLoadingTypes) {
+        const EnableChunkLoadingPlugin = require("./javascript/EnableChunkLoadingPlugin");
+        new EnableChunkLoadingPlugin(type).apply(compiler);
+      }
+    }
 
-		if (options.output.enabledLibraryTypes.length > 0) {
-			for (const type of options.output.enabledLibraryTypes) {
-				const EnableLibraryPlugin = require("./library/EnableLibraryPlugin");
-				new EnableLibraryPlugin(type).apply(compiler);
-			}
-		}
+    if (options.output.enabledWasmLoadingTypes.length > 0) {
+      for (const type of options.output.enabledWasmLoadingTypes) {
+        const EnableWasmLoadingPlugin = require("./wasm/EnableWasmLoadingPlugin");
+        new EnableWasmLoadingPlugin(type).apply(compiler);
+      }
+    }
 
-		if (options.output.pathinfo) {
-			const ModuleInfoHeaderPlugin = require("./ModuleInfoHeaderPlugin");
-			new ModuleInfoHeaderPlugin(options.output.pathinfo !== true).apply(
-				compiler
-			);
-		}
+    if (options.output.enabledLibraryTypes.length > 0) {
+      for (const type of options.output.enabledLibraryTypes) {
+        const EnableLibraryPlugin = require("./library/EnableLibraryPlugin");
+        new EnableLibraryPlugin(type).apply(compiler);
+      }
+    }
 
-		if (options.output.clean) {
-			const CleanPlugin = require("./CleanPlugin");
-			new CleanPlugin(
-				options.output.clean === true ? {} : options.output.clean
-			).apply(compiler);
-		}
+    if (options.output.pathinfo) {
+      const ModuleInfoHeaderPlugin = require("./ModuleInfoHeaderPlugin");
+      new ModuleInfoHeaderPlugin(options.output.pathinfo !== true).apply(
+        compiler
+      );
+    }
 
-		if (options.devtool) {
-			if (options.devtool.includes("source-map")) {
-				const hidden = options.devtool.includes("hidden");
-				const inline = options.devtool.includes("inline");
-				const evalWrapped = options.devtool.includes("eval");
-				const cheap = options.devtool.includes("cheap");
-				const moduleMaps = options.devtool.includes("module");
-				const noSources = options.devtool.includes("nosources");
-				const Plugin = evalWrapped
-					? require("./EvalSourceMapDevToolPlugin")
-					: require("./SourceMapDevToolPlugin");
-				new Plugin({
-					filename: inline ? null : options.output.sourceMapFilename,
-					moduleFilenameTemplate: options.output.devtoolModuleFilenameTemplate,
-					fallbackModuleFilenameTemplate:
-						options.output.devtoolFallbackModuleFilenameTemplate,
-					append: hidden ? false : undefined,
-					module: moduleMaps ? true : cheap ? false : true,
-					columns: cheap ? false : true,
-					noSources: noSources,
-					namespace: options.output.devtoolNamespace
-				}).apply(compiler);
-			} else if (options.devtool.includes("eval")) {
-				const EvalDevToolModulePlugin = require("./EvalDevToolModulePlugin");
-				new EvalDevToolModulePlugin({
-					moduleFilenameTemplate: options.output.devtoolModuleFilenameTemplate,
-					namespace: options.output.devtoolNamespace
-				}).apply(compiler);
-			}
-		}
+    if (options.output.clean) {
+      const CleanPlugin = require("./CleanPlugin");
+      new CleanPlugin(
+        options.output.clean === true ? {} : options.output.clean
+      ).apply(compiler);
+    }
 
-		new JavascriptModulesPlugin().apply(compiler);
-		new JsonModulesPlugin().apply(compiler);
-		new AssetModulesPlugin().apply(compiler);
+    if (options.devtool) {
+      if (options.devtool.includes("source-map")) {
+        const hidden = options.devtool.includes("hidden");
+        const inline = options.devtool.includes("inline");
+        const evalWrapped = options.devtool.includes("eval");
+        const cheap = options.devtool.includes("cheap");
+        const moduleMaps = options.devtool.includes("module");
+        const noSources = options.devtool.includes("nosources");
+        const Plugin = evalWrapped
+          ? require("./EvalSourceMapDevToolPlugin")
+          : require("./SourceMapDevToolPlugin");
+        new Plugin({
+          filename: inline ? null : options.output.sourceMapFilename,
+          moduleFilenameTemplate: options.output.devtoolModuleFilenameTemplate,
+          fallbackModuleFilenameTemplate:
+            options.output.devtoolFallbackModuleFilenameTemplate,
+          append: hidden ? false : undefined,
+          module: moduleMaps ? true : cheap ? false : true,
+          columns: cheap ? false : true,
+          noSources: noSources,
+          namespace: options.output.devtoolNamespace
+        }).apply(compiler);
+      } else if (options.devtool.includes("eval")) {
+        const EvalDevToolModulePlugin = require("./EvalDevToolModulePlugin");
+        new EvalDevToolModulePlugin({
+          moduleFilenameTemplate: options.output.devtoolModuleFilenameTemplate,
+          namespace: options.output.devtoolNamespace
+        }).apply(compiler);
+      }
+    }
 
-		if (!options.experiments.outputModule) {
-			if (options.output.module) {
-				throw new Error(
-					"'output.module: true' is only allowed when 'experiments.outputModule' is enabled"
-				);
-			}
-			if (options.output.enabledLibraryTypes.includes("module")) {
-				throw new Error(
-					"library type \"module\" is only allowed when 'experiments.outputModule' is enabled"
-				);
-			}
-			if (options.externalsType === "module") {
-				throw new Error(
-					"'externalsType: \"module\"' is only allowed when 'experiments.outputModule' is enabled"
-				);
-			}
-		}
+    new JavascriptModulesPlugin().apply(compiler);
+    new JsonModulesPlugin().apply(compiler);
+    new AssetModulesPlugin().apply(compiler);
 
-		if (options.experiments.syncWebAssembly) {
-			const WebAssemblyModulesPlugin = require("./wasm-sync/WebAssemblyModulesPlugin");
-			new WebAssemblyModulesPlugin({
-				mangleImports: options.optimization.mangleWasmImports
-			}).apply(compiler);
-		}
+    if (!options.experiments.outputModule) {
+      if (options.output.module) {
+        throw new Error(
+          "'output.module: true' is only allowed when 'experiments.outputModule' is enabled"
+        );
+      }
+      if (options.output.enabledLibraryTypes.includes("module")) {
+        throw new Error(
+          "library type \"module\" is only allowed when 'experiments.outputModule' is enabled"
+        );
+      }
+      if (options.externalsType === "module") {
+        throw new Error(
+          "'externalsType: \"module\"' is only allowed when 'experiments.outputModule' is enabled"
+        );
+      }
+    }
 
-		if (options.experiments.asyncWebAssembly) {
-			const AsyncWebAssemblyModulesPlugin = require("./wasm-async/AsyncWebAssemblyModulesPlugin");
-			new AsyncWebAssemblyModulesPlugin({
-				mangleImports: options.optimization.mangleWasmImports
-			}).apply(compiler);
-		}
+    if (options.experiments.syncWebAssembly) {
+      const WebAssemblyModulesPlugin = require("./wasm-sync/WebAssemblyModulesPlugin");
+      new WebAssemblyModulesPlugin({
+        mangleImports: options.optimization.mangleWasmImports
+      }).apply(compiler);
+    }
 
-		if (options.experiments.css) {
-			const CssModulesPlugin = require("./css/CssModulesPlugin");
-			new CssModulesPlugin(options.experiments.css).apply(compiler);
-		}
+    if (options.experiments.asyncWebAssembly) {
+      const AsyncWebAssemblyModulesPlugin = require("./wasm-async/AsyncWebAssemblyModulesPlugin");
+      new AsyncWebAssemblyModulesPlugin({
+        mangleImports: options.optimization.mangleWasmImports
+      }).apply(compiler);
+    }
 
-		if (options.experiments.lazyCompilation) {
-			const LazyCompilationPlugin = require("./hmr/LazyCompilationPlugin");
-			const lazyOptions =
-				typeof options.experiments.lazyCompilation === "object"
-					? options.experiments.lazyCompilation
-					: null;
-			new LazyCompilationPlugin({
-				backend:
-					typeof lazyOptions.backend === "function"
-						? lazyOptions.backend
-						: require("./hmr/lazyCompilationBackend")({
-								...lazyOptions.backend,
-								client:
-									(lazyOptions.backend && lazyOptions.backend.client) ||
-									require.resolve(
-										`../hot/lazy-compilation-${
-											options.externalsPresets.node ? "node" : "web"
-										}.js`
-									)
-						  }),
-				entries: !lazyOptions || lazyOptions.entries !== false,
-				imports: !lazyOptions || lazyOptions.imports !== false,
-				test: (lazyOptions && lazyOptions.test) || undefined
-			}).apply(compiler);
-		}
+    if (options.experiments.css) {
+      const CssModulesPlugin = require("./css/CssModulesPlugin");
+      new CssModulesPlugin(options.experiments.css).apply(compiler);
+    }
 
-		if (options.experiments.buildHttp) {
-			const HttpUriPlugin = require("./schemes/HttpUriPlugin");
-			const httpOptions = options.experiments.buildHttp;
-			new HttpUriPlugin(httpOptions).apply(compiler);
-		}
+    if (options.experiments.lazyCompilation) {
+      const LazyCompilationPlugin = require("./hmr/LazyCompilationPlugin");
+      const lazyOptions =
+        typeof options.experiments.lazyCompilation === "object"
+          ? options.experiments.lazyCompilation
+          : null;
+      new LazyCompilationPlugin({
+        backend:
+          typeof lazyOptions.backend === "function"
+            ? lazyOptions.backend
+            : require("./hmr/lazyCompilationBackend")({
+              ...lazyOptions.backend,
+              client:
+                (lazyOptions.backend && lazyOptions.backend.client) ||
+                require.resolve(
+                  `../hot/lazy-compilation-${options.externalsPresets.node ? "node" : "web"
+                  }.js`
+                )
+            }),
+        entries: !lazyOptions || lazyOptions.entries !== false,
+        imports: !lazyOptions || lazyOptions.imports !== false,
+        test: (lazyOptions && lazyOptions.test) || undefined
+      }).apply(compiler);
+    }
 
-		new EntryOptionPlugin().apply(compiler);
-		compiler.hooks.entryOption.call(options.context, options.entry);
+    if (options.experiments.buildHttp) {
+      const HttpUriPlugin = require("./schemes/HttpUriPlugin");
+      const httpOptions = options.experiments.buildHttp;
+      new HttpUriPlugin(httpOptions).apply(compiler);
+    }
 
-		new RuntimePlugin().apply(compiler);
+    //  将 entry: 'xx' 转换为 EntryOptionPlugin 插件进行注入
+    new EntryOptionPlugin().apply(compiler);
+    compiler.hooks.entryOption.call(options.context, options.entry);
 
-		new InferAsyncModulesPlugin().apply(compiler);
+    new RuntimePlugin().apply(compiler);
 
-		new DataUriPlugin().apply(compiler);
-		new FileUriPlugin().apply(compiler);
+    new InferAsyncModulesPlugin().apply(compiler);
 
-		new CompatibilityPlugin().apply(compiler);
-		new HarmonyModulesPlugin({
-			topLevelAwait: options.experiments.topLevelAwait
-		}).apply(compiler);
-		if (options.amd !== false) {
-			const AMDPlugin = require("./dependencies/AMDPlugin");
-			const RequireJsStuffPlugin = require("./RequireJsStuffPlugin");
-			new AMDPlugin(options.amd || {}).apply(compiler);
-			new RequireJsStuffPlugin().apply(compiler);
-		}
-		new CommonJsPlugin().apply(compiler);
-		new LoaderPlugin({}).apply(compiler);
-		if (options.node !== false) {
-			const NodeStuffPlugin = require("./NodeStuffPlugin");
-			new NodeStuffPlugin(options.node).apply(compiler);
-		}
-		new APIPlugin().apply(compiler);
-		new ExportsInfoApiPlugin().apply(compiler);
-		new WebpackIsIncludedPlugin().apply(compiler);
-		new ConstPlugin().apply(compiler);
-		new UseStrictPlugin().apply(compiler);
-		new RequireIncludePlugin().apply(compiler);
-		new RequireEnsurePlugin().apply(compiler);
-		new RequireContextPlugin().apply(compiler);
-		new ImportPlugin().apply(compiler);
-		new ImportMetaContextPlugin().apply(compiler);
-		new SystemPlugin().apply(compiler);
-		new ImportMetaPlugin().apply(compiler);
-		new URLPlugin().apply(compiler);
-		new WorkerPlugin(
-			options.output.workerChunkLoading,
-			options.output.workerWasmLoading,
-			options.output.module
-		).apply(compiler);
+    new DataUriPlugin().apply(compiler);
+    new FileUriPlugin().apply(compiler);
 
-		new DefaultStatsFactoryPlugin().apply(compiler);
-		new DefaultStatsPresetPlugin().apply(compiler);
-		new DefaultStatsPrinterPlugin().apply(compiler);
+    new CompatibilityPlugin().apply(compiler);
+    new HarmonyModulesPlugin({
+      topLevelAwait: options.experiments.topLevelAwait
+    }).apply(compiler);
+    if (options.amd !== false) {
+      const AMDPlugin = require("./dependencies/AMDPlugin");
+      const RequireJsStuffPlugin = require("./RequireJsStuffPlugin");
+      new AMDPlugin(options.amd || {}).apply(compiler);
+      new RequireJsStuffPlugin().apply(compiler);
+    }
+    new CommonJsPlugin().apply(compiler);
+    new LoaderPlugin({}).apply(compiler);
+    if (options.node !== false) {
+      const NodeStuffPlugin = require("./NodeStuffPlugin");
+      new NodeStuffPlugin(options.node).apply(compiler);
+    }
+    new APIPlugin().apply(compiler);
+    new ExportsInfoApiPlugin().apply(compiler);
+    new WebpackIsIncludedPlugin().apply(compiler);
+    new ConstPlugin().apply(compiler);
+    new UseStrictPlugin().apply(compiler);
+    new RequireIncludePlugin().apply(compiler);
+    new RequireEnsurePlugin().apply(compiler);
+    new RequireContextPlugin().apply(compiler);
+    new ImportPlugin().apply(compiler);
+    new ImportMetaContextPlugin().apply(compiler);
+    new SystemPlugin().apply(compiler);
+    new ImportMetaPlugin().apply(compiler);
+    new URLPlugin().apply(compiler);
+    new WorkerPlugin(
+      options.output.workerChunkLoading,
+      options.output.workerWasmLoading,
+      options.output.module
+    ).apply(compiler);
 
-		new JavascriptMetaInfoPlugin().apply(compiler);
+    new DefaultStatsFactoryPlugin().apply(compiler);
+    new DefaultStatsPresetPlugin().apply(compiler);
+    new DefaultStatsPrinterPlugin().apply(compiler);
 
-		if (typeof options.mode !== "string") {
-			const WarnNoModeSetPlugin = require("./WarnNoModeSetPlugin");
-			new WarnNoModeSetPlugin().apply(compiler);
-		}
+    new JavascriptMetaInfoPlugin().apply(compiler);
 
-		const EnsureChunkConditionsPlugin = require("./optimize/EnsureChunkConditionsPlugin");
-		new EnsureChunkConditionsPlugin().apply(compiler);
-		if (options.optimization.removeAvailableModules) {
-			const RemoveParentModulesPlugin = require("./optimize/RemoveParentModulesPlugin");
-			new RemoveParentModulesPlugin().apply(compiler);
-		}
-		if (options.optimization.removeEmptyChunks) {
-			const RemoveEmptyChunksPlugin = require("./optimize/RemoveEmptyChunksPlugin");
-			new RemoveEmptyChunksPlugin().apply(compiler);
-		}
-		if (options.optimization.mergeDuplicateChunks) {
-			const MergeDuplicateChunksPlugin = require("./optimize/MergeDuplicateChunksPlugin");
-			new MergeDuplicateChunksPlugin().apply(compiler);
-		}
-		if (options.optimization.flagIncludedChunks) {
-			const FlagIncludedChunksPlugin = require("./optimize/FlagIncludedChunksPlugin");
-			new FlagIncludedChunksPlugin().apply(compiler);
-		}
-		if (options.optimization.sideEffects) {
-			const SideEffectsFlagPlugin = require("./optimize/SideEffectsFlagPlugin");
-			new SideEffectsFlagPlugin(
-				options.optimization.sideEffects === true
-			).apply(compiler);
-		}
-		if (options.optimization.providedExports) {
-			const FlagDependencyExportsPlugin = require("./FlagDependencyExportsPlugin");
-			new FlagDependencyExportsPlugin().apply(compiler);
-		}
-		if (options.optimization.usedExports) {
-			const FlagDependencyUsagePlugin = require("./FlagDependencyUsagePlugin");
-			new FlagDependencyUsagePlugin(
-				options.optimization.usedExports === "global"
-			).apply(compiler);
-		}
-		if (options.optimization.innerGraph) {
-			const InnerGraphPlugin = require("./optimize/InnerGraphPlugin");
-			new InnerGraphPlugin().apply(compiler);
-		}
-		if (options.optimization.mangleExports) {
-			const MangleExportsPlugin = require("./optimize/MangleExportsPlugin");
-			new MangleExportsPlugin(
-				options.optimization.mangleExports !== "size"
-			).apply(compiler);
-		}
-		if (options.optimization.concatenateModules) {
-			const ModuleConcatenationPlugin = require("./optimize/ModuleConcatenationPlugin");
-			new ModuleConcatenationPlugin().apply(compiler);
-		}
-		if (options.optimization.splitChunks) {
-			const SplitChunksPlugin = require("./optimize/SplitChunksPlugin");
-			new SplitChunksPlugin(options.optimization.splitChunks).apply(compiler);
-		}
-		if (options.optimization.runtimeChunk) {
-			const RuntimeChunkPlugin = require("./optimize/RuntimeChunkPlugin");
-			new RuntimeChunkPlugin(options.optimization.runtimeChunk).apply(compiler);
-		}
-		if (!options.optimization.emitOnErrors) {
-			const NoEmitOnErrorsPlugin = require("./NoEmitOnErrorsPlugin");
-			new NoEmitOnErrorsPlugin().apply(compiler);
-		}
-		if (options.optimization.realContentHash) {
-			const RealContentHashPlugin = require("./optimize/RealContentHashPlugin");
-			new RealContentHashPlugin({
-				hashFunction: options.output.hashFunction,
-				hashDigest: options.output.hashDigest
-			}).apply(compiler);
-		}
-		if (options.optimization.checkWasmTypes) {
-			const WasmFinalizeExportsPlugin = require("./wasm-sync/WasmFinalizeExportsPlugin");
-			new WasmFinalizeExportsPlugin().apply(compiler);
-		}
-		const moduleIds = options.optimization.moduleIds;
-		if (moduleIds) {
-			switch (moduleIds) {
-				case "natural": {
-					const NaturalModuleIdsPlugin = require("./ids/NaturalModuleIdsPlugin");
-					new NaturalModuleIdsPlugin().apply(compiler);
-					break;
-				}
-				case "named": {
-					const NamedModuleIdsPlugin = require("./ids/NamedModuleIdsPlugin");
-					new NamedModuleIdsPlugin().apply(compiler);
-					break;
-				}
-				case "hashed": {
-					const WarnDeprecatedOptionPlugin = require("./WarnDeprecatedOptionPlugin");
-					const HashedModuleIdsPlugin = require("./ids/HashedModuleIdsPlugin");
-					new WarnDeprecatedOptionPlugin(
-						"optimization.moduleIds",
-						"hashed",
-						"deterministic"
-					).apply(compiler);
-					new HashedModuleIdsPlugin({
-						hashFunction: options.output.hashFunction
-					}).apply(compiler);
-					break;
-				}
-				case "deterministic": {
-					const DeterministicModuleIdsPlugin = require("./ids/DeterministicModuleIdsPlugin");
-					new DeterministicModuleIdsPlugin().apply(compiler);
-					break;
-				}
-				case "size": {
-					const OccurrenceModuleIdsPlugin = require("./ids/OccurrenceModuleIdsPlugin");
-					new OccurrenceModuleIdsPlugin({
-						prioritiseInitial: true
-					}).apply(compiler);
-					break;
-				}
-				default:
-					throw new Error(
-						`webpack bug: moduleIds: ${moduleIds} is not implemented`
-					);
-			}
-		}
-		const chunkIds = options.optimization.chunkIds;
-		if (chunkIds) {
-			switch (chunkIds) {
-				case "natural": {
-					const NaturalChunkIdsPlugin = require("./ids/NaturalChunkIdsPlugin");
-					new NaturalChunkIdsPlugin().apply(compiler);
-					break;
-				}
-				case "named": {
-					const NamedChunkIdsPlugin = require("./ids/NamedChunkIdsPlugin");
-					new NamedChunkIdsPlugin().apply(compiler);
-					break;
-				}
-				case "deterministic": {
-					const DeterministicChunkIdsPlugin = require("./ids/DeterministicChunkIdsPlugin");
-					new DeterministicChunkIdsPlugin().apply(compiler);
-					break;
-				}
-				case "size": {
-					//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-					const OccurrenceChunkIdsPlugin = require("./ids/OccurrenceChunkIdsPlugin");
-					new OccurrenceChunkIdsPlugin({
-						prioritiseInitial: true
-					}).apply(compiler);
-					break;
-				}
-				case "total-size": {
-					//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-					const OccurrenceChunkIdsPlugin = require("./ids/OccurrenceChunkIdsPlugin");
-					new OccurrenceChunkIdsPlugin({
-						prioritiseInitial: false
-					}).apply(compiler);
-					break;
-				}
-				default:
-					throw new Error(
-						`webpack bug: chunkIds: ${chunkIds} is not implemented`
-					);
-			}
-		}
-		if (options.optimization.nodeEnv) {
-			const DefinePlugin = require("./DefinePlugin");
-			new DefinePlugin({
-				"process.env.NODE_ENV": JSON.stringify(options.optimization.nodeEnv)
-			}).apply(compiler);
-		}
-		if (options.optimization.minimize) {
-			for (const minimizer of options.optimization.minimizer) {
-				if (typeof minimizer === "function") {
-					minimizer.call(compiler, compiler);
-				} else if (minimizer !== "...") {
-					minimizer.apply(compiler);
-				}
-			}
-		}
+    if (typeof options.mode !== "string") {
+      const WarnNoModeSetPlugin = require("./WarnNoModeSetPlugin");
+      new WarnNoModeSetPlugin().apply(compiler);
+    }
 
-		if (options.performance) {
-			const SizeLimitsPlugin = require("./performance/SizeLimitsPlugin");
-			new SizeLimitsPlugin(options.performance).apply(compiler);
-		}
+    const EnsureChunkConditionsPlugin = require("./optimize/EnsureChunkConditionsPlugin");
+    new EnsureChunkConditionsPlugin().apply(compiler);
+    if (options.optimization.removeAvailableModules) {
+      const RemoveParentModulesPlugin = require("./optimize/RemoveParentModulesPlugin");
+      new RemoveParentModulesPlugin().apply(compiler);
+    }
+    if (options.optimization.removeEmptyChunks) {
+      const RemoveEmptyChunksPlugin = require("./optimize/RemoveEmptyChunksPlugin");
+      new RemoveEmptyChunksPlugin().apply(compiler);
+    }
+    if (options.optimization.mergeDuplicateChunks) {
+      const MergeDuplicateChunksPlugin = require("./optimize/MergeDuplicateChunksPlugin");
+      new MergeDuplicateChunksPlugin().apply(compiler);
+    }
+    if (options.optimization.flagIncludedChunks) {
+      const FlagIncludedChunksPlugin = require("./optimize/FlagIncludedChunksPlugin");
+      new FlagIncludedChunksPlugin().apply(compiler);
+    }
+    if (options.optimization.sideEffects) {
+      const SideEffectsFlagPlugin = require("./optimize/SideEffectsFlagPlugin");
+      new SideEffectsFlagPlugin(
+        options.optimization.sideEffects === true
+      ).apply(compiler);
+    }
+    if (options.optimization.providedExports) {
+      const FlagDependencyExportsPlugin = require("./FlagDependencyExportsPlugin");
+      new FlagDependencyExportsPlugin().apply(compiler);
+    }
+    if (options.optimization.usedExports) {
+      const FlagDependencyUsagePlugin = require("./FlagDependencyUsagePlugin");
+      new FlagDependencyUsagePlugin(
+        options.optimization.usedExports === "global"
+      ).apply(compiler);
+    }
+    if (options.optimization.innerGraph) {
+      const InnerGraphPlugin = require("./optimize/InnerGraphPlugin");
+      new InnerGraphPlugin().apply(compiler);
+    }
+    if (options.optimization.mangleExports) {
+      const MangleExportsPlugin = require("./optimize/MangleExportsPlugin");
+      new MangleExportsPlugin(
+        options.optimization.mangleExports !== "size"
+      ).apply(compiler);
+    }
+    if (options.optimization.concatenateModules) {
+      const ModuleConcatenationPlugin = require("./optimize/ModuleConcatenationPlugin");
+      new ModuleConcatenationPlugin().apply(compiler);
+    }
+    if (options.optimization.splitChunks) {
+      const SplitChunksPlugin = require("./optimize/SplitChunksPlugin");
+      new SplitChunksPlugin(options.optimization.splitChunks).apply(compiler);
+    }
+    if (options.optimization.runtimeChunk) {
+      const RuntimeChunkPlugin = require("./optimize/RuntimeChunkPlugin");
+      new RuntimeChunkPlugin(options.optimization.runtimeChunk).apply(compiler);
+    }
+    if (!options.optimization.emitOnErrors) {
+      const NoEmitOnErrorsPlugin = require("./NoEmitOnErrorsPlugin");
+      new NoEmitOnErrorsPlugin().apply(compiler);
+    }
+    if (options.optimization.realContentHash) {
+      const RealContentHashPlugin = require("./optimize/RealContentHashPlugin");
+      new RealContentHashPlugin({
+        hashFunction: options.output.hashFunction,
+        hashDigest: options.output.hashDigest
+      }).apply(compiler);
+    }
+    if (options.optimization.checkWasmTypes) {
+      const WasmFinalizeExportsPlugin = require("./wasm-sync/WasmFinalizeExportsPlugin");
+      new WasmFinalizeExportsPlugin().apply(compiler);
+    }
+    const moduleIds = options.optimization.moduleIds;
+    if (moduleIds) {
+      switch (moduleIds) {
+        case "natural": {
+          const NaturalModuleIdsPlugin = require("./ids/NaturalModuleIdsPlugin");
+          new NaturalModuleIdsPlugin().apply(compiler);
+          break;
+        }
+        case "named": {
+          const NamedModuleIdsPlugin = require("./ids/NamedModuleIdsPlugin");
+          new NamedModuleIdsPlugin().apply(compiler);
+          break;
+        }
+        case "hashed": {
+          const WarnDeprecatedOptionPlugin = require("./WarnDeprecatedOptionPlugin");
+          const HashedModuleIdsPlugin = require("./ids/HashedModuleIdsPlugin");
+          new WarnDeprecatedOptionPlugin(
+            "optimization.moduleIds",
+            "hashed",
+            "deterministic"
+          ).apply(compiler);
+          new HashedModuleIdsPlugin({
+            hashFunction: options.output.hashFunction
+          }).apply(compiler);
+          break;
+        }
+        case "deterministic": {
+          const DeterministicModuleIdsPlugin = require("./ids/DeterministicModuleIdsPlugin");
+          new DeterministicModuleIdsPlugin().apply(compiler);
+          break;
+        }
+        case "size": {
+          const OccurrenceModuleIdsPlugin = require("./ids/OccurrenceModuleIdsPlugin");
+          new OccurrenceModuleIdsPlugin({
+            prioritiseInitial: true
+          }).apply(compiler);
+          break;
+        }
+        default:
+          throw new Error(
+            `webpack bug: moduleIds: ${moduleIds} is not implemented`
+          );
+      }
+    }
+    const chunkIds = options.optimization.chunkIds;
+    if (chunkIds) {
+      switch (chunkIds) {
+        case "natural": {
+          const NaturalChunkIdsPlugin = require("./ids/NaturalChunkIdsPlugin");
+          new NaturalChunkIdsPlugin().apply(compiler);
+          break;
+        }
+        case "named": {
+          const NamedChunkIdsPlugin = require("./ids/NamedChunkIdsPlugin");
+          new NamedChunkIdsPlugin().apply(compiler);
+          break;
+        }
+        case "deterministic": {
+          const DeterministicChunkIdsPlugin = require("./ids/DeterministicChunkIdsPlugin");
+          new DeterministicChunkIdsPlugin().apply(compiler);
+          break;
+        }
+        case "size": {
+          //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+          const OccurrenceChunkIdsPlugin = require("./ids/OccurrenceChunkIdsPlugin");
+          new OccurrenceChunkIdsPlugin({
+            prioritiseInitial: true
+          }).apply(compiler);
+          break;
+        }
+        case "total-size": {
+          //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+          const OccurrenceChunkIdsPlugin = require("./ids/OccurrenceChunkIdsPlugin");
+          new OccurrenceChunkIdsPlugin({
+            prioritiseInitial: false
+          }).apply(compiler);
+          break;
+        }
+        default:
+          throw new Error(
+            `webpack bug: chunkIds: ${chunkIds} is not implemented`
+          );
+      }
+    }
+    if (options.optimization.nodeEnv) {
+      const DefinePlugin = require("./DefinePlugin");
+      new DefinePlugin({
+        "process.env.NODE_ENV": JSON.stringify(options.optimization.nodeEnv)
+      }).apply(compiler);
+    }
+    if (options.optimization.minimize) {
+      for (const minimizer of options.optimization.minimizer) {
+        if (typeof minimizer === "function") {
+          minimizer.call(compiler, compiler);
+        } else if (minimizer !== "...") {
+          minimizer.apply(compiler);
+        }
+      }
+    }
 
-		new TemplatedPathPlugin().apply(compiler);
+    if (options.performance) {
+      const SizeLimitsPlugin = require("./performance/SizeLimitsPlugin");
+      new SizeLimitsPlugin(options.performance).apply(compiler);
+    }
 
-		new RecordIdsPlugin({
-			portableIds: options.optimization.portableRecords
-		}).apply(compiler);
+    new TemplatedPathPlugin().apply(compiler);
 
-		new WarnCaseSensitiveModulesPlugin().apply(compiler);
+    new RecordIdsPlugin({
+      portableIds: options.optimization.portableRecords
+    }).apply(compiler);
 
-		const AddManagedPathsPlugin = require("./cache/AddManagedPathsPlugin");
-		new AddManagedPathsPlugin(
-			options.snapshot.managedPaths,
-			options.snapshot.immutablePaths
-		).apply(compiler);
+    new WarnCaseSensitiveModulesPlugin().apply(compiler);
 
-		if (options.cache && typeof options.cache === "object") {
-			const cacheOptions = options.cache;
-			switch (cacheOptions.type) {
-				case "memory": {
-					if (isFinite(cacheOptions.maxGenerations)) {
-						//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-						const MemoryWithGcCachePlugin = require("./cache/MemoryWithGcCachePlugin");
-						new MemoryWithGcCachePlugin({
-							maxGenerations: cacheOptions.maxGenerations
-						}).apply(compiler);
-					} else {
-						//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-						const MemoryCachePlugin = require("./cache/MemoryCachePlugin");
-						new MemoryCachePlugin().apply(compiler);
-					}
-					if (cacheOptions.cacheUnaffected) {
-						if (!options.experiments.cacheUnaffected) {
-							throw new Error(
-								"'cache.cacheUnaffected: true' is only allowed when 'experiments.cacheUnaffected' is enabled"
-							);
-						}
-						compiler.moduleMemCaches = new Map();
-					}
-					break;
-				}
-				case "filesystem": {
-					const AddBuildDependenciesPlugin = require("./cache/AddBuildDependenciesPlugin");
-					for (const key in cacheOptions.buildDependencies) {
-						const list = cacheOptions.buildDependencies[key];
-						new AddBuildDependenciesPlugin(list).apply(compiler);
-					}
-					if (!isFinite(cacheOptions.maxMemoryGenerations)) {
-						//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-						const MemoryCachePlugin = require("./cache/MemoryCachePlugin");
-						new MemoryCachePlugin().apply(compiler);
-					} else if (cacheOptions.maxMemoryGenerations !== 0) {
-						//@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
-						const MemoryWithGcCachePlugin = require("./cache/MemoryWithGcCachePlugin");
-						new MemoryWithGcCachePlugin({
-							maxGenerations: cacheOptions.maxMemoryGenerations
-						}).apply(compiler);
-					}
-					if (cacheOptions.memoryCacheUnaffected) {
-						if (!options.experiments.cacheUnaffected) {
-							throw new Error(
-								"'cache.memoryCacheUnaffected: true' is only allowed when 'experiments.cacheUnaffected' is enabled"
-							);
-						}
-						compiler.moduleMemCaches = new Map();
-					}
-					switch (cacheOptions.store) {
-						case "pack": {
-							const IdleFileCachePlugin = require("./cache/IdleFileCachePlugin");
-							const PackFileCacheStrategy = require("./cache/PackFileCacheStrategy");
-							new IdleFileCachePlugin(
-								new PackFileCacheStrategy({
-									compiler,
-									fs: compiler.intermediateFileSystem,
-									context: options.context,
-									cacheLocation: cacheOptions.cacheLocation,
-									version: cacheOptions.version,
-									logger: compiler.getInfrastructureLogger(
-										"webpack.cache.PackFileCacheStrategy"
-									),
-									snapshot: options.snapshot,
-									maxAge: cacheOptions.maxAge,
-									profile: cacheOptions.profile,
-									allowCollectingMemory: cacheOptions.allowCollectingMemory,
-									compression: cacheOptions.compression
-								}),
-								cacheOptions.idleTimeout,
-								cacheOptions.idleTimeoutForInitialStore,
-								cacheOptions.idleTimeoutAfterLargeChanges
-							).apply(compiler);
-							break;
-						}
-						default:
-							throw new Error("Unhandled value for cache.store");
-					}
-					break;
-				}
-				default:
-					// @ts-expect-error Property 'type' does not exist on type 'never'. ts(2339)
-					throw new Error(`Unknown cache type ${cacheOptions.type}`);
-			}
-		}
-		new ResolverCachePlugin().apply(compiler);
+    const AddManagedPathsPlugin = require("./cache/AddManagedPathsPlugin");
+    new AddManagedPathsPlugin(
+      options.snapshot.managedPaths,
+      options.snapshot.immutablePaths
+    ).apply(compiler);
 
-		if (options.ignoreWarnings && options.ignoreWarnings.length > 0) {
-			const IgnoreWarningsPlugin = require("./IgnoreWarningsPlugin");
-			new IgnoreWarningsPlugin(options.ignoreWarnings).apply(compiler);
-		}
+    if (options.cache && typeof options.cache === "object") {
+      const cacheOptions = options.cache;
+      switch (cacheOptions.type) {
+        case "memory": {
+          if (isFinite(cacheOptions.maxGenerations)) {
+            //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+            const MemoryWithGcCachePlugin = require("./cache/MemoryWithGcCachePlugin");
+            new MemoryWithGcCachePlugin({
+              maxGenerations: cacheOptions.maxGenerations
+            }).apply(compiler);
+          } else {
+            //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+            const MemoryCachePlugin = require("./cache/MemoryCachePlugin");
+            new MemoryCachePlugin().apply(compiler);
+          }
+          if (cacheOptions.cacheUnaffected) {
+            if (!options.experiments.cacheUnaffected) {
+              throw new Error(
+                "'cache.cacheUnaffected: true' is only allowed when 'experiments.cacheUnaffected' is enabled"
+              );
+            }
+            compiler.moduleMemCaches = new Map();
+          }
+          break;
+        }
+        case "filesystem": {
+          const AddBuildDependenciesPlugin = require("./cache/AddBuildDependenciesPlugin");
+          for (const key in cacheOptions.buildDependencies) {
+            const list = cacheOptions.buildDependencies[key];
+            new AddBuildDependenciesPlugin(list).apply(compiler);
+          }
+          if (!isFinite(cacheOptions.maxMemoryGenerations)) {
+            //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+            const MemoryCachePlugin = require("./cache/MemoryCachePlugin");
+            new MemoryCachePlugin().apply(compiler);
+          } else if (cacheOptions.maxMemoryGenerations !== 0) {
+            //@ts-expect-error https://github.com/microsoft/TypeScript/issues/41697
+            const MemoryWithGcCachePlugin = require("./cache/MemoryWithGcCachePlugin");
+            new MemoryWithGcCachePlugin({
+              maxGenerations: cacheOptions.maxMemoryGenerations
+            }).apply(compiler);
+          }
+          if (cacheOptions.memoryCacheUnaffected) {
+            if (!options.experiments.cacheUnaffected) {
+              throw new Error(
+                "'cache.memoryCacheUnaffected: true' is only allowed when 'experiments.cacheUnaffected' is enabled"
+              );
+            }
+            compiler.moduleMemCaches = new Map();
+          }
+          switch (cacheOptions.store) {
+            case "pack": {
+              const IdleFileCachePlugin = require("./cache/IdleFileCachePlugin");
+              const PackFileCacheStrategy = require("./cache/PackFileCacheStrategy");
+              new IdleFileCachePlugin(
+                new PackFileCacheStrategy({
+                  compiler,
+                  fs: compiler.intermediateFileSystem,
+                  context: options.context,
+                  cacheLocation: cacheOptions.cacheLocation,
+                  version: cacheOptions.version,
+                  logger: compiler.getInfrastructureLogger(
+                    "webpack.cache.PackFileCacheStrategy"
+                  ),
+                  snapshot: options.snapshot,
+                  maxAge: cacheOptions.maxAge,
+                  profile: cacheOptions.profile,
+                  allowCollectingMemory: cacheOptions.allowCollectingMemory,
+                  compression: cacheOptions.compression
+                }),
+                cacheOptions.idleTimeout,
+                cacheOptions.idleTimeoutForInitialStore,
+                cacheOptions.idleTimeoutAfterLargeChanges
+              ).apply(compiler);
+              break;
+            }
+            default:
+              throw new Error("Unhandled value for cache.store");
+          }
+          break;
+        }
+        default:
+          // @ts-expect-error Property 'type' does not exist on type 'never'. ts(2339)
+          throw new Error(`Unknown cache type ${cacheOptions.type}`);
+      }
+    }
+    new ResolverCachePlugin().apply(compiler);
 
-		compiler.hooks.afterPlugins.call(compiler);
-		if (!compiler.inputFileSystem) {
-			throw new Error("No input filesystem provided");
-		}
-		compiler.resolverFactory.hooks.resolveOptions
-			.for("normal")
-			.tap("WebpackOptionsApply", resolveOptions => {
-				resolveOptions = cleverMerge(options.resolve, resolveOptions);
-				resolveOptions.fileSystem = compiler.inputFileSystem;
-				return resolveOptions;
-			});
-		compiler.resolverFactory.hooks.resolveOptions
-			.for("context")
-			.tap("WebpackOptionsApply", resolveOptions => {
-				resolveOptions = cleverMerge(options.resolve, resolveOptions);
-				resolveOptions.fileSystem = compiler.inputFileSystem;
-				resolveOptions.resolveToContext = true;
-				return resolveOptions;
-			});
-		compiler.resolverFactory.hooks.resolveOptions
-			.for("loader")
-			.tap("WebpackOptionsApply", resolveOptions => {
-				resolveOptions = cleverMerge(options.resolveLoader, resolveOptions);
-				resolveOptions.fileSystem = compiler.inputFileSystem;
-				return resolveOptions;
-			});
-		compiler.hooks.afterResolvers.call(compiler);
-		return options;
-	}
+    if (options.ignoreWarnings && options.ignoreWarnings.length > 0) {
+      const IgnoreWarningsPlugin = require("./IgnoreWarningsPlugin");
+      new IgnoreWarningsPlugin(options.ignoreWarnings).apply(compiler);
+    }
+
+    compiler.hooks.afterPlugins.call(compiler);
+    if (!compiler.inputFileSystem) {
+      throw new Error("No input filesystem provided");
+    }
+    compiler.resolverFactory.hooks.resolveOptions
+      .for("normal")
+      .tap("WebpackOptionsApply", resolveOptions => {
+        resolveOptions = cleverMerge(options.resolve, resolveOptions);
+        resolveOptions.fileSystem = compiler.inputFileSystem;
+        return resolveOptions;
+      });
+    compiler.resolverFactory.hooks.resolveOptions
+      .for("context")
+      .tap("WebpackOptionsApply", resolveOptions => {
+        resolveOptions = cleverMerge(options.resolve, resolveOptions);
+        resolveOptions.fileSystem = compiler.inputFileSystem;
+        resolveOptions.resolveToContext = true;
+        return resolveOptions;
+      });
+    compiler.resolverFactory.hooks.resolveOptions
+      .for("loader")
+      .tap("WebpackOptionsApply", resolveOptions => {
+        resolveOptions = cleverMerge(options.resolveLoader, resolveOptions);
+        resolveOptions.fileSystem = compiler.inputFileSystem;
+        return resolveOptions;
+      });
+    compiler.hooks.afterResolvers.call(compiler);
+    return options;
+  }
 }
 
 module.exports = WebpackOptionsApply;
