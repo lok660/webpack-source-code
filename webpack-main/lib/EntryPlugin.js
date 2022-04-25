@@ -1,6 +1,6 @@
 /*
-	MIT License http://www.opensource.org/licenses/mit-license.php
-	Author Tobias Koppers @sokra
+  MIT License http://www.opensource.org/licenses/mit-license.php
+  Author Tobias Koppers @sokra
 */
 
 "use strict";
@@ -11,57 +11,59 @@ const EntryDependency = require("./dependencies/EntryDependency");
 /** @typedef {import("./Entrypoint").EntryOptions} EntryOptions */
 
 class EntryPlugin {
-	/**
-	 * An entry plugin which will handle
-	 * creation of the EntryDependency
-	 *
-	 * @param {string} context context path
-	 * @param {string} entry entry path
-	 * @param {EntryOptions | string=} options entry options (passing a string is deprecated)
-	 */
-	constructor(context, entry, options) {
-		this.context = context;
-		this.entry = entry;
-		this.options = options || "";
-	}
+  /**
+   * An entry plugin which will handle
+   * creation of the EntryDependency
+   *
+   * @param {string} context context path
+   * @param {string} entry entry path
+   * @param {EntryOptions | string=} options entry options (passing a string is deprecated)
+   */
+  constructor(context, entry, options) {
+    this.context = context;
+    this.entry = entry;
+    this.options = options || "";
+  }
 
-	/**
-	 * Apply the plugin
-	 * @param {Compiler} compiler the compiler instance
-	 * @returns {void}
-	 */
-	apply(compiler) {
-		compiler.hooks.compilation.tap(
-			"EntryPlugin",
-			(compilation, { normalModuleFactory }) => {
-				compilation.dependencyFactories.set(
-					EntryDependency,
-					normalModuleFactory
-				);
-			}
-		);
+  /**
+   * Apply the plugin
+   * @param {Compiler} compiler the compiler instance
+   * @returns {void}
+   */
+  apply (compiler) {
+    compiler.hooks.compilation.tap(
+      "EntryPlugin",
+      (compilation, { normalModuleFactory }) => {
+        compilation.dependencyFactories.set(
+          EntryDependency,
+          normalModuleFactory
+        );
+      }
+    );
 
-		const { entry, options, context } = this;
-		const dep = EntryPlugin.createDependency(entry, options);
+    const { entry, options, context } = this;
+    //  创建入口依赖
+    const dep = EntryPlugin.createDependency(entry, options);
+    //  注册 make hook回调函数的地方
+    compiler.hooks.make.tapAsync("EntryPlugin", (compilation, callback) => {
+      //  通过 compilation.addEntry 进行添加依赖,从入口开始编译
+      compilation.addEntry(context, dep, options, err => {
+        callback(err);
+      });
+    });
+  }
 
-		compiler.hooks.make.tapAsync("EntryPlugin", (compilation, callback) => {
-			compilation.addEntry(context, dep, options, err => {
-				callback(err);
-			});
-		});
-	}
-
-	/**
-	 * @param {string} entry entry request
-	 * @param {EntryOptions | string} options entry options (passing string is deprecated)
-	 * @returns {EntryDependency} the dependency
-	 */
-	static createDependency(entry, options) {
-		const dep = new EntryDependency(entry);
-		// TODO webpack 6 remove string option
-		dep.loc = { name: typeof options === "object" ? options.name : options };
-		return dep;
-	}
+  /**
+   * @param {string} entry entry request
+   * @param {EntryOptions | string} options entry options (passing string is deprecated)
+   * @returns {EntryDependency} the dependency
+   */
+  static createDependency (entry, options) {
+    const dep = new EntryDependency(entry);
+    // TODO webpack 6 remove string option
+    dep.loc = { name: typeof options === "object" ? options.name : options };
+    return dep;
+  }
 }
 
 module.exports = EntryPlugin;
