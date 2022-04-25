@@ -2812,6 +2812,9 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
    * @param {Callback} callback signals when the call finishes
    * @returns {void}
    */
+  // 当模块解析完，就来到了 seal 阶段，对处理过的代码进行封装输出
+  // 目的是将 module 生成 chunk，并封存到 compilation.assets 中
+  // 在这个过程可以做各种各样的优化
   seal (callback) {
     const finalCallback = err => {
       this.factorizeQueue.clear();
@@ -2821,6 +2824,7 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
       this.addModuleQueue.clear();
       return callback(err);
     };
+    // 生成 chunkGraph 实例
     const chunkGraph = new ChunkGraph(
       this.moduleGraph,
       this.outputOptions.hashFunction
@@ -2828,11 +2832,12 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
     this.chunkGraph = chunkGraph;
 
     if (this._backCompat) {
+      // 遍历 compilation.modules ，记录下模块与 chunk 关系
       for (const module of this.modules) {
         ChunkGraph.setChunkGraphForModule(module, chunkGraph);
       }
     }
-
+    //  触发seal勾子
     this.hooks.seal.call();
 
     this.logger.time("optimize dependencies");
@@ -2847,6 +2852,7 @@ BREAKING CHANGE: Asset processing hooks in Compilation has been merged into a si
     this.moduleGraph.freeze("seal");
     /** @type {Map<Entrypoint, Module[]>} */
     const chunkGraphInit = new Map();
+    //  循环 this.entries 创建 chunks
     for (const [name, { dependencies, includeDependencies, options }] of this
       .entries) {
       const chunk = this.addChunk(name);
@@ -2974,30 +2980,36 @@ Or do you want to use the entrypoints '${name}' and '${runtime}' independently o
         entry.setRuntimeChunk(chunk);
       }
     }
+    // 创建 chunkGraph、moduleGraph
     buildChunkGraph(this, chunkGraphInit);
     this.hooks.afterChunks.call(this.chunks);
     this.logger.timeEnd("create chunks");
 
     this.logger.time("optimize");
+    // 触发钩子 optimize，代表优化开始
     this.hooks.optimize.call();
-
+    // 执行各种优化 module
     while (this.hooks.optimizeModules.call(this.modules)) {
       /* empty */
     }
+    //  此处 module 已经优化完
     this.hooks.afterOptimizeModules.call(this.modules);
 
+    // 执行各种优化 chunk
     while (this.hooks.optimizeChunks.call(this.chunks, this.chunkGroups)) {
       /* empty */
     }
+    //  此处 chunk 已经优化完
     this.hooks.afterOptimizeChunks.call(this.chunks, this.chunkGroups);
 
+    //  执行各种优化 chunkGroup
     this.hooks.optimizeTree.callAsync(this.chunks, this.modules, err => {
       if (err) {
         return finalCallback(
           makeWebpackError(err, "Compilation.hooks.optimizeTree")
         );
       }
-
+      //  此处 chunkGroup 已经优化完
       this.hooks.afterOptimizeTree.call(this.chunks, this.modules);
 
       this.hooks.optimizeChunkModules.callAsync(
@@ -3068,7 +3080,7 @@ Or do you want to use the entrypoints '${name}' and '${runtime}' independently o
             const codeGenerationJobs = this.createHash();
             this.hooks.afterHash.call();
             this.logger.timeEnd("hashing");
-
+            //  执行生成代码的函数
             this._runCodeGenerationJobs(codeGenerationJobs, err => {
               if (err) {
                 return finalCallback(err);
@@ -3084,6 +3096,7 @@ Or do you want to use the entrypoints '${name}' and '${runtime}' independently o
               this.clearAssets();
 
               this.hooks.beforeModuleAssets.call();
+              //  创建 module assets 资源
               this.createModuleAssets();
               this.logger.timeEnd("module assets");
 
@@ -3132,6 +3145,7 @@ Or do you want to use the entrypoints '${name}' and '${runtime}' independently o
               this.logger.time("create chunk assets");
               if (this.hooks.shouldGenerateChunkAssets.call() !== false) {
                 this.hooks.beforeChunkAssets.call();
+                //  创建 chunk assets 资源
                 this.createChunkAssets(err => {
                   this.logger.timeEnd("create chunk assets");
                   if (err) {
@@ -4666,6 +4680,7 @@ This prevents using hashes of each other and should be avoided.`);
                     }
                   }
                 }
+                //  输出构建完成的文件
                 this.emitAsset(file, source, assetInfo);
                 if (fileManifest.auxiliary) {
                   chunk.auxiliaryFiles.add(file);
