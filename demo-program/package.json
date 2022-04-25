@@ -1,5 +1,5 @@
 {
-  "name": "myprogram",
+  "name": "demo-program",
   "version": "1.0.0",
   "description": "",
   "main": "webpack.config.js",
@@ -7,12 +7,13 @@
     "build": "node build.js",
     "madge": "node madge.js"
   },
+  "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babel/core": "^7.13.14",
-    "@babel/preset-env": "^7.13.12",
-    "babel-loader": "^8.2.2",
-    "madge": "^4.0.2"
+    "@babel/core": "^7.17.9",
+    "@babel/preset-env": "^7.16.11",
+    "babel-loader": "^8.2.5",
+    "madge": "^5.0.1"
   }
 }
