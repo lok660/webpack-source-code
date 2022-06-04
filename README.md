@@ -1,6 +1,6 @@
 # webpack 源码阅读
 
-基于 webpack v5.72
+基于 webpack v5.72 
 
 ![](/imgs/img7.jpg)
 
